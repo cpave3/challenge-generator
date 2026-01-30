@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import 'dotenv/config';
+
 /**
  * Code Kata Generator CLI
  * 

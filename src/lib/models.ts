@@ -23,14 +23,14 @@ export const ACTIVE_PROVIDER: AIProvider = 'openai';
 export const MODELS: Record<AIProvider, ModelConfig> = {
   openai: {
     provider: 'openai',
-    model: 'gpt-4-turbo-preview',
-    maxTokens: 4000,
+    model: 'gpt-4o',
+    maxTokens: 8000,
     temperature: 0.7,
   },
   anthropic: {
     provider: 'anthropic',
     model: 'claude-3-sonnet-20240229',
-    maxTokens: 4000,
+    maxTokens: 8000,
     temperature: 0.7,
   },
 };

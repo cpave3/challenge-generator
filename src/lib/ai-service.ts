@@ -5,21 +5,35 @@
  * making it easy to switch between OpenAI, Anthropic, and other providers.
  */
 
-import { generateText } from 'ai';
+import { generateText, Output } from 'ai';
 import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
 import { getActiveModel, type ModelConfig } from './models.js';
 
-export interface ChallengeGenerationResponse {
-  challengeName: string;
-  slug: string;
-  difficulty: number;
-  skills: string[];
-  estimatedTime: string;
-  readme: string;
-  starterFiles: Array<{ path: string; content: string }>;
-  solutionFiles: Array<{ path: string; content: string }>;
-  testFiles: Array<{ path: string; content: string }>;
-}
+// Define the Zod schema for challenge generation
+const ChallengeSchema = z.object({
+  challengeName: z.string().describe('The name/title of the coding challenge'),
+  slug: z.string().describe('URL-friendly slug for the challenge'),
+  difficulty: z.number().describe('Difficulty level (1-4)'),
+  skills: z.array(z.string()).describe('List of skills/practices this challenge covers'),
+  estimatedTime: z.string().describe('Estimated time to complete (e.g., "30-45 minutes")'),
+  readme: z.string().describe('Full README content in markdown format'),
+  starterFiles: z.array(z.object({
+    path: z.string().describe('Relative path to the file'),
+    content: z.string().describe('File content')
+  })).describe('Starter code files for the challenge'),
+  solutionFiles: z.array(z.object({
+    path: z.string().describe('Relative path to the file'),
+    content: z.string().describe('File content')
+  })).describe('Complete solution files'),
+  testFiles: z.array(z.object({
+    path: z.string().describe('Relative path to the file'),
+    content: z.string().describe('File content')
+  })).describe('Test files to verify the solution')
+});
+
+// Export the type derived from the schema
+export type ChallengeGenerationResponse = z.infer<typeof ChallengeSchema>;
 
 export class AIService {
   private config: ModelConfig;
@@ -35,17 +49,19 @@ export class AIService {
     try {
       const model = this.createModel();
       
-      const { text } = await generateText({
+      const { output } = await generateText({
         model,
         system: systemPrompt,
         prompt: userPrompt,
-        maxTokens: this.config.maxTokens,
         temperature: this.config.temperature,
+        output: Output.object({
+          schema: ChallengeSchema,
+          name: 'Challenge',
+          description: 'A coding challenge with starter code, solution, and tests'
+        })
       });
 
-      // Parse the JSON response
-      const parsed = this.parseResponse(text);
-      return parsed;
+      return output;
     } catch (error) {
       console.error('Error generating challenge:', error);
       throw new Error(
@@ -61,43 +77,6 @@ export class AIService {
         return (openai as any)(this.config.model);
       default:
         throw new Error(`Unsupported provider: ${this.config.provider}`);
-    }
-  }
-
-  private parseResponse(text: string): ChallengeGenerationResponse {
-    try {
-      // Try to extract JSON from the response
-      // The AI might wrap it in markdown code blocks
-      const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      const jsonString = jsonMatch ? jsonMatch[1] : text;
-      
-      const parsed = JSON.parse(jsonString.trim());
-      
-      // Validate required fields
-      const requiredFields = [
-        'challengeName',
-        'slug',
-        'difficulty',
-        'skills',
-        'estimatedTime',
-        'readme',
-        'starterFiles',
-        'solutionFiles',
-        'testFiles',
-      ];
-      
-      for (const field of requiredFields) {
-        if (!(field in parsed)) {
-          throw new Error(`Missing required field: ${field}`);
-        }
-      }
-      
-      return parsed as ChallengeGenerationResponse;
-    } catch (error) {
-      console.error('Failed to parse AI response:', text);
-      throw new Error(
-        `Failed to parse AI response: ${error instanceof Error ? error.message : String(error)}`
-      );
     }
   }
 }
