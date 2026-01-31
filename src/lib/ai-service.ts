@@ -33,6 +33,27 @@ const ChallengeSchema = z.object({
 // Export the type derived from the schema
 export type ChallengeGenerationResponse = z.infer<typeof ChallengeSchema>;
 
+export async function generateChallengeBrief(
+  systemPrompt: string,
+  userPrompt: string
+): Promise<string> {
+  try {
+    const { text } = await generateText({
+      model,
+      system: systemPrompt,
+      prompt: userPrompt,
+      temperature: 0.8,
+    });
+
+    return text.trim();
+  } catch (error) {
+    console.error('Error generating challenge brief:', error);
+    throw new Error(
+      `Failed to generate challenge brief: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
 export async function generateChallenge(
   systemPrompt: string,
   userPrompt: string

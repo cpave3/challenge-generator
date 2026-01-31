@@ -7,15 +7,66 @@
 import { Command } from "commander";
 import path from "path";
 import { fileURLToPath } from "url";
-import { generateChallenge } from "../lib/ai-service.js";
+import readline from "readline";
+import { generateChallenge, generateChallengeBrief } from "../lib/ai-service.js";
 import {
   CHALLENGE_GENERATOR_SYSTEM_PROMPT,
+  BRIEF_GENERATOR_SYSTEM_PROMPT,
   buildUserPrompt,
+  buildBriefUserPrompt,
 } from "../lib/prompts.js";
 import { scaffoldChallenge, getNextChallengeNumber } from "../lib/scaffold.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+function askQuestion(rl: readline.Interface, question: string): Promise<string> {
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      resolve(answer.trim().toLowerCase());
+    });
+  });
+}
+
+async function generateAndConfirmBrief(
+  rl: readline.Interface,
+  language: string,
+  difficulty: number,
+  topic?: string
+): Promise<string> {
+  let brief: string;
+  let accepted = false;
+
+  while (!accepted) {
+    console.log("\n🤖 Generating challenge brief...\n");
+
+    const briefUserPrompt = buildBriefUserPrompt({
+      language,
+      difficulty,
+      topic,
+    });
+
+    brief = await generateChallengeBrief(BRIEF_GENERATOR_SYSTEM_PROMPT, briefUserPrompt);
+
+    console.log("─".repeat(70));
+    console.log(brief);
+    console.log("─".repeat(70));
+    console.log("");
+
+    const answer = await askQuestion(rl, "[A]ccept this brief or [R]egenerate? (A/R): ");
+
+    if (answer === "a" || answer === "accept") {
+      accepted = true;
+      console.log("\n✅ Brief accepted! Generating full challenge...\n");
+    } else if (answer === "r" || answer === "regenerate") {
+      console.log("\n🔄 Regenerating brief with a completely different concept...\n");
+    } else {
+      console.log("\n⚠️  Invalid input. Please enter 'A' to accept or 'R' to regenerate.\n");
+    }
+  }
+
+  return brief!;
+}
 
 export function createGenerateCommand(): Command {
   const command = new Command("generate");
@@ -30,6 +81,11 @@ export function createGenerateCommand(): Command {
     .option("-d, --difficulty <level>", "Difficulty level (1-4)", "2")
     .option("-t, --topic <topic>", "Topic or skill to focus on")
     .action(async (options) => {
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      });
+
       try {
         // Validate options
         const language = options.language.toLowerCase();
@@ -69,22 +125,30 @@ export function createGenerateCommand(): Command {
           basePath,
         );
 
-        // Build prompts
+        // PHASE 1: Generate and confirm brief
+        const approvedBrief = await generateAndConfirmBrief(
+          rl,
+          language,
+          difficulty,
+          options.topic
+        );
+
+        // PHASE 2: Generate full challenge with approved brief
+        console.log("🤖 Generating full challenge based on approved brief...");
         const userPrompt = buildUserPrompt({
           language,
           difficulty,
           topic: options.topic,
           challengeNumber,
+          brief: approvedBrief,
         });
 
-        // Generate challenge
-        console.log("🤖 Asking AI to generate challenge...");
         const challengeData = await generateChallenge(
           CHALLENGE_GENERATOR_SYSTEM_PROMPT,
           userPrompt,
         );
 
-        console.log(`✨ Generated: ${challengeData.challengeName}`);
+        console.log(`\n✨ Generated: ${challengeData.challengeName}`);
         console.log(`   Skills: ${challengeData.skills.join(", ")}`);
         console.log(`   Estimated time: ${challengeData.estimatedTime}`);
         console.log("");
@@ -116,6 +180,8 @@ export function createGenerateCommand(): Command {
           error instanceof Error ? error.message : String(error),
         );
         process.exit(1);
+      } finally {
+        rl.close();
       }
     });
 

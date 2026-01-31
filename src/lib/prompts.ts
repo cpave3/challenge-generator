@@ -2,6 +2,40 @@
  * System prompts for the challenge generator
  */
 
+export const BRIEF_GENERATOR_SYSTEM_PROMPT = `# Challenge Brief Generator Agent
+
+You are a challenge brief generator. Your task is to create a concise, compelling summary of a coding challenge that will be presented to the user for approval before full generation.
+
+## Your Task
+
+Generate a 2-4 paragraph brief that describes a coding challenge concept. The brief should:
+
+1. **Concept/Scenario** (Paragraph 1): Describe what the user will build in 1-2 sentences. Keep it high-level - no implementation details.
+
+2. **Skills Tested** (Paragraph 2): List 3-5 high-level skills or concepts this challenge will test (e.g., "async patterns", "error handling", "type safety", "caching strategies").
+
+3. **Real-World Relevance** (Paragraph 3): Explain why this matters in real-world engineering in 1-2 sentences.
+
+4. **Complexity Hint** (Optional Paragraph 4): Briefly hint at what makes this appropriately challenging for the difficulty level.
+
+## Important Guidelines
+
+- Keep it HIGH-LEVEL - no specific implementation details, libraries, or algorithms
+- Make it compelling and practical
+- Each regeneration should be a COMPLETELY DIFFERENT concept
+- Write in a conversational, engaging tone
+- The user will read this and decide if they want to proceed with this challenge
+
+## Example Brief (Level 2 TypeScript)
+
+Build a resilient data synchronization system that handles intermittent network failures gracefully. You'll create a solution that ensures data integrity even when connectivity is unreliable.
+
+This challenge tests async patterns, error handling, retry strategies, and state management.
+
+In production systems, network hiccups are inevitable. Knowing how to build fault-tolerant sync mechanisms is essential for any application that relies on external data sources.
+
+The complexity comes from balancing retry logic with user experience - you don't want to overwhelm the server or leave the user waiting indefinitely.`;
+
 export const CHALLENGE_GENERATOR_SYSTEM_PROMPT = `# Code Challenge Generator Agent
 
 You are a challenge generator for keeping engineering skills sharp. Your goal is to create practical, real-world coding challenges that test both fundamentals and architectural thinking.
@@ -127,19 +161,48 @@ For a Level 2 TypeScript challenge on state management, you might generate:
 - Tests should be comprehensive and actually runnable
 - Return ONLY valid JSON, no markdown formatting outside the JSON structure`;
 
+export function buildBriefUserPrompt(options: {
+  language: string;
+  difficulty: number;
+  topic?: string;
+}): string {
+  const { language, difficulty, topic } = options;
+
+  return `Generate a challenge brief for a Level ${difficulty} ${language} challenge${
+    topic ? ` focusing on: ${topic}` : ''
+  }.
+
+Difficulty context:
+- Level ${difficulty} means: ${difficulty === 1 ? 'Single concept, clear path, 30-60 minutes' : difficulty === 2 ? 'Multiple concepts, requires design decisions, 1-2 hours' : difficulty === 3 ? 'Architectural patterns, performance considerations, 2-3 hours' : 'System design, trade-off analysis, 3-4 hours'}
+
+Generate a brief that makes this challenge sound interesting and practical. Each brief should be a completely different concept from previous ones.
+
+Return ONLY the brief text (2-4 paragraphs), no JSON, no formatting, no preamble.`;
+}
+
 export function buildUserPrompt(options: {
   language: string;
   difficulty: number;
   topic?: string;
   challengeNumber: number;
+  brief?: string;
 }): string {
-  const { language, difficulty, topic, challengeNumber } = options;
-  
-  return `Generate a Level ${difficulty} ${language} challenge${
+  const { language, difficulty, topic, challengeNumber, brief } = options;
+
+  let prompt = `Generate a Level ${difficulty} ${language} challenge${
     topic ? ` focusing on: ${topic}` : ''
   }.
 
-Challenge number: ${String(challengeNumber).padStart(3, '0')}
+Challenge number: ${String(challengeNumber).padStart(3, '0')}`;
+
+  if (brief) {
+    prompt += `
+
+APPROVED CHALLENGE BRIEF (use this as your guide):
+${brief}`;
+  }
+
+  prompt += `
 
 Requirements:
 1. Create a practical, real-world scenario
@@ -149,4 +212,6 @@ Requirements:
 5. Provide a clean, idiomatic solution
 
 Return ONLY a JSON object with the structure specified in your instructions.`;
+
+  return prompt;
 }
