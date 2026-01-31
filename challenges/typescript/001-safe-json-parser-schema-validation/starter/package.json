@@ -1,0 +1,13 @@
+{
+  "name": "safe-json-parser-challenge",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}

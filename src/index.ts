@@ -17,7 +17,7 @@ import { Command } from 'commander';
 import { createGenerateCommand } from './commands/generate.js';
 import { createListCommand } from './commands/list.js';
 import { createValidateCommand } from './commands/validate.js';
-import { getActiveModel } from './lib/models.js';
+import { model } from './lib/models.js';
 
 const program = new Command();
 
@@ -36,9 +36,7 @@ program
   .option('-v, --verbose', 'Enable verbose output')
   .hook('preAction', (thisCommand) => {
     if (thisCommand.opts().verbose) {
-      const model = getActiveModel();
-      console.log(`Using AI provider: ${model.provider}`);
-      console.log(`Model: ${model.model}`);
+      console.log('Using AI model: hf:moonshotai/Kimi-K2.5');
       console.log('');
     }
   });

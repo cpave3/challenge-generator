@@ -1,0 +1,21 @@
+{
+    "name": "challenge/distributed-rate-limiter",
+    "type": "project",
+    "require": {
+        "php": ">=8.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "phpstan/phpstan": "^1.10"
+    },
+    "autoload": {
+        "psr-4": {
+            "RateLimiter\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "RateLimiter\\Tests\\": "tests/"
+        }
+    }
+}

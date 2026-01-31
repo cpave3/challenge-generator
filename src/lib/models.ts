@@ -1,46 +1,18 @@
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import type { LanguageModel } from 'ai';
+
 /**
  * AI Model Configuration
- * 
- * This file centralizes AI model configuration for easy swapping between providers.
- * To switch providers, simply update the activeProvider and model constants below.
+ *
+ * Simply define and export the model you want to use.
+ * Example: export const model = openai('gpt-4o');
  */
 
-export type AIProvider = 'openai' | 'anthropic';
+const provider = createOpenAICompatible({
+  name: "synthetic",
+  apiKey: process.env.SYNTHETIC_API_KEY,
+  baseURL: "https://api.synthetic.new/openai/v1",
+  includeUsage: true,
+});
 
-export interface ModelConfig {
-  provider: AIProvider;
-  model: string;
-  maxTokens: number;
-  temperature: number;
-}
-
-// ============================================================
-// CONFIGURATION - Modify these values to switch AI providers
-// ============================================================
-
-export const ACTIVE_PROVIDER: AIProvider = 'openai';
-
-export const MODELS: Record<AIProvider, ModelConfig> = {
-  openai: {
-    provider: 'openai',
-    model: 'gpt-4o',
-    maxTokens: 8000,
-    temperature: 0.7,
-  },
-  anthropic: {
-    provider: 'anthropic',
-    model: 'claude-3-sonnet-20240229',
-    maxTokens: 8000,
-    temperature: 0.7,
-  },
-};
-
-// Get the active model configuration
-export function getActiveModel(): ModelConfig {
-  return MODELS[ACTIVE_PROVIDER];
-}
-
-// Helper to check which provider is active
-export function isProvider(provider: AIProvider): boolean {
-  return ACTIVE_PROVIDER === provider;
-}
+export const model: LanguageModel = provider("hf:moonshotai/Kimi-K2.5");
