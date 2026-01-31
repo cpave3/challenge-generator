@@ -1,0 +1,12 @@
+parameters:
+  level: 8
+  paths:
+    - src
+    - tests
+  checkMissingIterableValueType: true
+  checkGenericClassInNonGenericObjectType: true
+  treatPhpDocTypesAsCertain: true
+  reportUnmatchedIgnoredErrors: true
+  
+  # Additional strict checks
+  ignoreErrors: []

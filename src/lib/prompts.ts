@@ -80,7 +80,9 @@ When asked to generate a challenge, you will create content for four files:
 
 ## Output Format
 
-Respond with a JSON object containing these exact keys:
+Respond with a JSON object containing these exact keys.
+
+**CRITICAL: Do NOT include config files (package.json, tsconfig.json, vitest.config.ts, eslint.config.js, .prettierrc, .gitignore) in the file arrays.** These are automatically provided by the template system.
 
 \`\`\`json
 {
@@ -118,26 +120,153 @@ The readme field should contain:
 - Requirements section (functional and non-functional)
 - Definition of Done checklist
 - Acceptance Tests descriptions
-- Optional: Hints and Extensions
+- Hints section (strategic guidance, not spoilers)
+- Common Wrong Approaches section (anti-patterns to avoid)
+- Extensions section (optional stretch goals)
+
+#### Challenge Design Guardrails
+When designing the challenge:
+- If timers involved → fake timers test mandatory
+- If async involved → Promise rejection tests mandatory
+- If state involved → concurrency tests mandatory
+- If API surface exists → type tests mandatory
+
+A good challenge should trigger at least 3 of these guardrails.
 
 ### File Paths
-- Use relative paths from the challenge root
-- Include appropriate file extensions
-- Organize logically (e.g., "src/index.ts", "tests/index.test.ts")
+
+**TypeScript Template Structure:**
+- starterFiles paths: "index.ts" (goes directly to src/index.ts - this is where user implements)
+- solutionFiles paths: "src/index.ts" (goes to solution/src/index.ts)
+- testFiles paths: "acceptance.test.ts" and "types.test-d.ts" (go directly to tests/)
+
+**Directory Structure:**
+- src/index.ts - Starter implementation (user works here)
+- solution/src/index.ts - Reference solution  
+- tests/acceptance.test.ts - Runtime behavior tests
+- tests/types.test-d.ts - Type-level tests
+- package.json - From template (DO NOT generate when template exists)
+- tsconfig.json - From template (DO NOT generate when template exists)
+- vitest.config.ts - From template (DO NOT generate when template exists)
+
+**When template exists:** Only generate code files (src/index.ts, solution/src/index.ts, tests/*.test.ts). Config files are provided by template.
+
+**When NO template exists:** Generate everything including config files (package.json, tsconfig.json, etc.).
+
+All paths should be relative to the challenge root without leading slashes.
 
 ## Language-Specific Guidelines
 
-### TypeScript
-- Use strict mode
-- Leverage generics where appropriate
-- Test type safety at compile time
-- Include integration with modern APIs (fetch, async/await)
+### TypeScript Challenge Template
 
-### PHP
-- Use modern PHP (8.2+) features
-- Include type hints
-- Consider both Laravel-style and vanilla PHP approaches
-- Test with Pest or PHPUnit
+This project uses a strict TypeScript template. All generated code MUST follow these constraints:
+
+#### Environment
+- **Node.js**: ≥ 20 LTS
+- **TypeScript**: ≥ 5.x (strict mode enabled)
+- **Test Runner**: Vitest with native ESM + fake timers
+- **Type Testing**: tsd for compile-time type assertions
+- **Linting**: ESLint flat config with strict rules
+
+#### File Structure
+- src/index.ts - Starter implementation (user works here directly)
+- solution/src/index.ts - Reference solution
+- tests/acceptance.test.ts - Runtime behavior tests
+- tests/types.test-d.ts - Type-level tests using tsd
+
+**IMPORTANT**: 
+- Tests import from '../src/index.js'
+- When a template exists for the language: **DO NOT generate config files** - package.json, tsconfig.json, vitest.config.ts, eslint.config.js, .prettierrc, .gitignore are automatically copied from the template
+- When NO template exists: You MUST generate all config files needed to run the project
+
+#### TypeScript Constraints (Non-negotiable)
+- NO ": any" types anywhere
+- NO implicit returns - explicit function return types required
+- NO floating promises - must handle or await
+- Use discriminated unions for result types
+- Leverage type predicates (value is T) for validation functions
+- Use readonly for immutable data structures
+- Fake timers are pre-configured for timing-sensitive tests
+
+#### Test Requirements
+1. **Acceptance tests** (tests/acceptance.test.ts):
+   - Use fake timers for timing-related tests (vi.useFakeTimers())
+   - Test failure paths, not just happy paths
+   - Test concurrency where applicable (Promise.all scenarios)
+   - Test error handling thoroughly
+
+2. **Type tests** (tests/types.test-d.ts):
+   - Use tsd's expectType and expectError
+   - Verify function return types narrow correctly
+   - Test that invalid inputs are rejected at compile time
+   - Prevent "any"-based cheating
+
+#### ESLint Rules (Auto-enforced)
+- @typescript-eslint/no-explicit-any: error
+- @typescript-eslint/explicit-function-return-type: error
+- @typescript-eslint/no-floating-promises: error
+- @typescript-eslint/consistent-type-imports: error
+
+### PHP Challenge Template
+
+This project uses a strict PHP 8.2+ template with modern tooling. All generated code MUST follow these constraints.
+
+#### Environment
+- **PHP**: ≥ 8.2 (strictly enforced)
+- **Test Runner**: Pest (PHPUnit-compatible, cleaner syntax)
+- **Static Analysis**: PHPStan Level 8 (max, used as hard gate)
+- **Formatting**: PHP-CS-Fixer with PSR-12 + strict rules
+- **Autoloading**: PSR-4 with namespace Challenge\ for src/, Challenge\Tests\ for tests/
+
+#### File Structure
+- src/RetryExecutor.php - Starter implementation (user works here directly)
+- solution/RetryExecutor.php - Reference solution
+- tests/RetryExecutorTest.php - Acceptance tests with Pest
+- composer.json - From template (DO NOT generate when template exists)
+- phpstan.neon - From template (DO NOT generate when template exists)
+- phpunit.xml - From template (DO NOT generate when template exists)
+- .php-cs-fixer.php - From template (DO NOT generate when template exists)
+
+**IMPORTANT**: 
+- Tests import from src/ classes using PSR-4 autoloading
+- When a template exists for the language: **DO NOT generate config files** - composer.json, phpstan.neon, phpunit.xml, .php-cs-fixer.php are automatically copied from the template
+- When NO template exists: You MUST generate all config files needed to run the project
+
+#### PHP Constraints (Non-negotiable)
+- **MANDATORY**: Every PHP file must start with: <?php declare(strict_types=1);
+- All functions must have explicit return type hints
+- All parameters must have type hints
+- Use final classes by default
+- Avoid magic arrays - use typed data structures
+- Use readonly properties where appropriate
+- Constructor injection for dependencies
+- Explicit exception flows - no silent failures
+
+#### Test Requirements
+1. **Acceptance tests** (tests/*.php):
+   - Use Pest syntax (it(), expect())
+   - Test failure paths, not just happy paths
+   - Test call counts, exception types, and side effects
+   - At least one test must fail if solution has logic errors (e.g., unconditional retries, swallowed exceptions)
+   - Time-based tests allowed but use usleep sparingly
+
+2. **Negative Test Philosophy**:
+   - Kill "while(true)" solutions with explicit assertions
+   - Ensure exceptions are not swallowed
+   - Verify exact retry counts, not just "works"
+
+#### Static Analysis Rules (PHPStan Level 8)
+- Forces iterable typing
+- Prevents vague arrays
+- Detects sloppy generics via PHPDoc
+- All code must pass composer analyse:strict
+
+#### Coding Standards (PHP-CS-Fixer)
+- PSR-12 base with strict additions
+- strict_param: true (enforces strict_types=1 on all files)
+- declare_strict_types: true (mandatory)
+- no_unused_imports: true
+- ordered_imports: alphabetically sorted
 
 ### Python
 - Use type hints (3.10+ syntax)
@@ -156,9 +285,21 @@ For a Level 2 TypeScript challenge on state management, you might generate:
 ## Important
 
 - Generate COMPLETE, WORKING code in all three sections (starter, solution, tests)
-- Starter code should have type definitions but empty/implementations that fail tests
-- Solution should be production-ready and pass all tests
-- Tests should be comprehensive and actually runnable
+- Starter code rules:
+  - Must compile cleanly (no TypeScript errors)
+  - Must export correct symbols
+  - Must fail at least 50% of acceptance tests
+  - Must pass 0% of type tests (deliberately incomplete types)
+  - Should contain TODO comments, not scaffolding logic
+  - Example: \`export function doThing(): unknown { throw new Error('Not implemented'); }\`
+- Solution code rules:
+  - Must pass ALL tests (acceptance and type tests)
+  - Use idiomatic TypeScript patterns (discriminated unions, readonly data, meaningful generics)
+  - Avoid unnecessary abstraction
+  - Include comments explaining tradeoffs
+  - Zero "any" types
+- Tests must be comprehensive and actually runnable
+- Type tests must use tsd (expectType, expectError) and verify compile-time guarantees
 - Return ONLY valid JSON, no markdown formatting outside the JSON structure`;
 
 export function buildBriefUserPrompt(options: {

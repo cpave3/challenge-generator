@@ -1,0 +1,42 @@
+{
+  "name": "challenges/php-challenge",
+  "type": "project",
+  "description": "PHP Coding Challenge",
+  "require": {
+    "php": "^8.2"
+  },
+  "require-dev": {
+    "pestphp/pest": "^2.34",
+    "phpunit/phpunit": "^10.5",
+    "phpstan/phpstan": "^1.11",
+    "friendsofphp/php-cs-fixer": "^3.60"
+  },
+  "autoload": {
+    "psr-4": {
+      "Challenge\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Challenge\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "pest",
+    "test:coverage": "pest --coverage",
+    "analyse": "phpstan analyse --memory-limit=512M",
+    "analyse:strict": "phpstan analyse --level=8 --memory-limit=512M",
+    "lint": "php-cs-fixer fix --dry-run --diff",
+    "lint:fix": "php-cs-fixer fix",
+    "ci": [
+      "@analyse:strict",
+      "@lint",
+      "@test"
+    ]
+  },
+  "config": {
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    }
+  }
+}
