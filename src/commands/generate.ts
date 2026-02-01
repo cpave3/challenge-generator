@@ -28,11 +28,24 @@ function askQuestion(rl: readline.Interface, question: string): Promise<string> 
   });
 }
 
+function validateTime(time: string | undefined): string | undefined {
+  if (!time) return undefined;
+  
+  const match = time.match(/^\d+[mhdw]$/);
+  if (!match) {
+    throw new Error(
+      `Invalid time format: "${time}". Use format like 30m, 1h, 2h, 2d, 1w (number + m/h/d/w)`
+    );
+  }
+  return time;
+}
+
 async function generateAndConfirmBrief(
   rl: readline.Interface,
   language: string,
   difficulty: number,
-  topic?: string
+  topic?: string,
+  time?: string
 ): Promise<string> {
   let brief: string;
   let accepted = false;
@@ -44,6 +57,7 @@ async function generateAndConfirmBrief(
       language,
       difficulty,
       topic,
+      time,
     });
 
     brief = await generateChallengeBrief(BRIEF_GENERATOR_SYSTEM_PROMPT, briefUserPrompt);
@@ -80,6 +94,7 @@ export function createGenerateCommand(): Command {
     )
     .option("-d, --difficulty <level>", "Difficulty level (1-4)", "2")
     .option("-t, --topic <topic>", "Topic or skill to focus on")
+    .option("--time <duration>", "Estimated time (e.g., 30m, 1h, 2h, 2d, 1w)")
     .action(async (options) => {
       const rl = readline.createInterface({
         input: process.stdin,
@@ -103,6 +118,9 @@ export function createGenerateCommand(): Command {
           process.exit(1);
         }
 
+        // Validate time format if provided
+        const time = validateTime(options.time);
+
         // Check for required API key
         // if (!process.env.OPENAI_API_KEY) {
         //   console.error('Error: OPENAI_API_KEY environment variable is required');
@@ -115,6 +133,9 @@ export function createGenerateCommand(): Command {
         );
         if (options.topic) {
           console.log(`📋 Topic: ${options.topic}`);
+        }
+        if (time) {
+          console.log(`⏱️  Time estimate: ${time}`);
         }
         console.log("");
 
@@ -130,7 +151,8 @@ export function createGenerateCommand(): Command {
           rl,
           language,
           difficulty,
-          options.topic
+          options.topic,
+          time
         );
 
         // PHASE 2: Generate full challenge with approved brief
@@ -141,6 +163,7 @@ export function createGenerateCommand(): Command {
           topic: options.topic,
           challengeNumber,
           brief: approvedBrief,
+          time,
         });
 
         const challengeData = await generateChallenge(

@@ -140,11 +140,25 @@ function normalizeTestPath(filePath: string): string {
   return normalized;
 }
 
+/**
+ * Clean the slug to remove any numeric prefix that might duplicate the challenge number.
+ * Handles cases where AI returns slugs like "005-nested-form-validator".
+ */
+function cleanSlug(slug: string, challengeNumber: number): string {
+  const numStr = String(challengeNumber).padStart(3, '0');
+  // Remove leading pattern like "005-" or "005_" from slug
+  const cleaned = slug.replace(new RegExp(`^${numStr}[-_]`), '');
+  return cleaned || slug; // If cleaning removed everything, return original
+}
+
 export async function scaffoldChallenge(options: ScaffoldOptions): Promise<string> {
   const { language, challengeNumber, challengeData, basePath } = options;
   
+  // Clean the slug to prevent duplicate numbering (e.g., "005-005-nested-form-validator")
+  const cleanChallengeSlug = cleanSlug(challengeData.slug, challengeNumber);
+  
   // Create challenge directory name
-  const challengeDirName = `${String(challengeNumber).padStart(3, '0')}-${challengeData.slug}`;
+  const challengeDirName = `${String(challengeNumber).padStart(3, '0')}-${cleanChallengeSlug}`;
   const challengePath = path.join(basePath, 'challenges', language, challengeDirName);
   
   console.log(`\n📁 Creating challenge at: ${challengePath}`);

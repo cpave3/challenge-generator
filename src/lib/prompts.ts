@@ -26,6 +26,16 @@ Generate a 2-4 paragraph brief that describes a coding challenge concept. The br
 - Write in a conversational, engaging tone
 - The user will read this and decide if they want to proceed with this challenge
 
+## Time Estimate Interpretation (When Provided)
+
+When a time estimate is specified (e.g., 30m, 1h, 2d), interpret it as:
+- **30m - 2h**: A quick challenge completable in one focused sitting
+- **4h - 8h**: A substantial challenge requiring deep focus, possibly one long session or split across a day
+- **1d - 3d**: Multi-day effort assuming the user spends a couple hours per day (NOT literal 24-72 hours)
+- **1w+**: Multi-week effort with regular but limited time commitment
+
+The time estimate is SUGGESTIVE for scope only. Adjust challenge complexity to match the implied effort level, not the literal hour count.
+
 ## Example Brief (Level 2 TypeScript)
 
 Build a resilient data synchronization system that handles intermittent network failures gracefully. You'll create a solution that ensures data integrity even when connectivity is unreliable.
@@ -54,9 +64,19 @@ When asked to generate a challenge, you will create content for four files:
 - Test 3-5 distinct skills simultaneously (e.g., async patterns + type safety + caching)
 - Have clear, measurable acceptance criteria
 - Mirror real-world scenarios, not textbook exercises
-- Can be completed in 1-3 hours
+- Can be completed in 1-3 hours (unless a specific time estimate is provided)
 - Have a "trivial solution" that works but is obviously wrong (tests should catch this)
 - Force engagement with language-specific idioms
+
+### Time Estimate Guidelines (When User Specifies --time):
+
+When a time estimate is provided in the user prompt, adjust challenge scope accordingly:
+- **30m - 2h**: Small, focused challenge. One core concept, minimal boilerplate. Completable in a single focused session.
+- **4h - 8h**: Substantial challenge. Multiple concepts, requires some design decisions. May be completed in one long session or split.
+- **1d - 3d**: Significant challenge. Architectural considerations, multiple components. Assume user works a couple hours per day across multiple days (NOT 24-72 hours of continuous work).
+- **1w+**: Large challenge. Complex system design, extensive testing, multiple iterations. Multi-week effort with regular but limited time.
+
+The time is SUGGESTIVE for scope sizing - it's about the "size of effort" not literal clock hours. A "2d" challenge takes about 2 days worth of effort where the user might only code 1-2 hours each day.
 
 ### Avoid:
 - Algorithm puzzles (LeetCode-style)
@@ -89,6 +109,8 @@ Respond with a JSON object containing these exact keys.
   "challengeName": "Human-readable challenge name",
   "slug": "kebab-case-challenge-name",
   "difficulty": 1-4,
+  
+**IMPORTANT**: The slug must NOT contain the challenge number (e.g., NOT "005-nested-form-validator"). Use only descriptive kebab-case names like "nested-form-validator".
   "skills": ["skill1", "skill2", "skill3"],
   "estimatedTime": "1-3 hours",
   "readme": "Full README.md content as a string",
@@ -306,19 +328,34 @@ export function buildBriefUserPrompt(options: {
   language: string;
   difficulty: number;
   topic?: string;
+  time?: string;
 }): string {
-  const { language, difficulty, topic } = options;
+  const { language, difficulty, topic, time } = options;
 
-  return `Generate a challenge brief for a Level ${difficulty} ${language} challenge${
+  let prompt = `Generate a challenge brief for a Level ${difficulty} ${language} challenge${
     topic ? ` focusing on: ${topic}` : ''
-  }.
+  }${time ? ` with an estimated effort of ${time}` : ''}.
 
 Difficulty context:
-- Level ${difficulty} means: ${difficulty === 1 ? 'Single concept, clear path, 30-60 minutes' : difficulty === 2 ? 'Multiple concepts, requires design decisions, 1-2 hours' : difficulty === 3 ? 'Architectural patterns, performance considerations, 2-3 hours' : 'System design, trade-off analysis, 3-4 hours'}
+- Level ${difficulty} means: ${difficulty === 1 ? 'Single concept, clear path' : difficulty === 2 ? 'Multiple concepts, requires design decisions' : difficulty === 3 ? 'Architectural patterns, performance considerations' : 'System design, trade-off analysis'}`;
+
+  if (time) {
+    prompt += `
+
+Time guidance:
+- ${time} is the suggested effort level (not literal hours)
+- Design the challenge scope to match this time commitment
+- Short durations (30m-2h) should be completable in one focused session
+- Multi-day durations (1d+) assume a couple hours per day, not full days`;
+  }
+
+  prompt += `
 
 Generate a brief that makes this challenge sound interesting and practical. Each brief should be a completely different concept from previous ones.
 
 Return ONLY the brief text (2-4 paragraphs), no JSON, no formatting, no preamble.`;
+
+  return prompt;
 }
 
 export function buildUserPrompt(options: {
@@ -327,12 +364,13 @@ export function buildUserPrompt(options: {
   topic?: string;
   challengeNumber: number;
   brief?: string;
+  time?: string;
 }): string {
-  const { language, difficulty, topic, challengeNumber, brief } = options;
+  const { language, difficulty, topic, challengeNumber, brief, time } = options;
 
   let prompt = `Generate a Level ${difficulty} ${language} challenge${
     topic ? ` focusing on: ${topic}` : ''
-  }.
+  }${time ? ` with an estimated effort of ${time}` : ''}.
 
 Challenge number: ${String(challengeNumber).padStart(3, '0')}`;
 
@@ -347,8 +385,19 @@ ${brief}`;
 
 Requirements:
 1. Create a practical, real-world scenario
-2. Test ${difficulty === 1 ? '1-2' : difficulty === 2 ? '3-4' : '4-5'} distinct skills
-3. Can be completed in ${difficulty === 1 ? '30-60 minutes' : difficulty === 2 ? '1-2 hours' : '2-4 hours'}
+2. Test ${difficulty === 1 ? '1-2' : difficulty === 2 ? '3-4' : '4-5'} distinct skills`;
+
+  if (time) {
+    prompt += `
+3. Design scope for approximately ${time} worth of effort (not literal hours)
+   - Short durations (30m-2h): completable in one focused session
+   - Multi-day durations (1d+): assumes a couple hours per day, not full days`;
+  } else {
+    prompt += `
+3. Can be completed in ${difficulty === 1 ? '30-60 minutes' : difficulty === 2 ? '1-2 hours' : '2-4 hours'}`;
+  }
+
+  prompt += `
 4. Include comprehensive tests that fail with starter code
 5. Provide a clean, idiomatic solution
 
